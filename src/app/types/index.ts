@@ -1,3 +1,7 @@
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { CompositeScreenProps } from "@react-navigation/native";
+
 export type Snippet = {
   id: number;
   title: string;
@@ -38,3 +42,12 @@ export type BottomTabParamList = {
   Files: undefined;
   Settings: undefined;
 };
+
+// --- CRITICAL NAVIGATION TYPE ---
+// This composite type allows screens inside the BottomTabs (like Home and Favorites)
+// to securely navigate to screens in the RootStack (like SnippetDetail).
+export type TabScreenProps<T extends keyof BottomTabParamList> =
+  CompositeScreenProps<
+    BottomTabScreenProps<BottomTabParamList, T>,
+    NativeStackScreenProps<RootStackParamList>
+  >;

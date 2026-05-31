@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Alert, FlatList, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  AlertButton,
+  FlatList,
+  Text,
+  TouchableOpacity,
+  View,
+  ScrollView,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { ManagedFile } from "../types";
 import {
   copyManagedFile,
@@ -8,16 +17,23 @@ import {
   importLocalFile,
   listManagedFiles,
   moveManagedFile,
-  readTextFile
+  readTextFile,
 } from "../services/fileService";
 import { shareFile } from "../services/exportService";
-import { Button, Card, Muted, Screen, Title, usePalette } from "../components/ui";
+import {
+  Button,
+  Card,
+  Muted,
+  Screen,
+  Title,
+  usePalette,
+} from "../components/ui";
 
 const folderList = [
-  { label: "Screenshots", uri: folders.screenshots },
-  { label: "Exports", uri: folders.exports },
-  { label: "Templates", uri: folders.templates },
-  { label: "Downloads", uri: folders.downloads }
+  { label: "Screenshots", uri: folders.screenshots, icon: "image" as const },
+  { label: "Exports", uri: folders.exports, icon: "share" as const },
+  { label: "Templates", uri: folders.templates, icon: "copy" as const },
+  { label: "Downloads", uri: folders.downloads, icon: "download" as const },
 ];
 
 export function FileManagerScreen({ dark }: { dark: boolean }) {
@@ -37,20 +53,28 @@ export function FileManagerScreen({ dark }: { dark: boolean }) {
     if (/\.(txt|js|json|ts|tsx|css|html|py)$/i.test(file.name)) {
       setPreview(await readTextFile(file.uri));
     } else {
-      setPreview("Preview is available for text/code files. You can still share, move, copy, or delete this file.");
+      setPreview(
+        "Preview is only available for text/code files. You can still share, move, or delete this file.",
+      );
     }
   };
 
   const chooseTarget = (file: ManagedFile, move: boolean) => {
-    Alert.alert(move ? "Move file" : "Copy file", "Choose target folder", folderList.map((f) => ({
+    const buttons: AlertButton[] = folderList.map((f) => ({
       text: f.label,
       onPress: async () => {
         if (move) await moveManagedFile(file.uri, f.uri);
         else await copyManagedFile(file.uri, f.uri);
         setPreview("");
         load();
-      }
-    })).concat([{ text: "Cancel", style: "cancel" as const }]));
+      },
+    }));
+    buttons.push({ text: "Cancel", style: "cancel" });
+    Alert.alert(
+      move ? "Move file" : "Copy file",
+      "Choose target folder",
+      buttons,
+    );
   };
 
   const remove = (file: ManagedFile) => {
@@ -63,67 +87,261 @@ export function FileManagerScreen({ dark }: { dark: boolean }) {
           await deleteManagedFile(file.uri);
           setPreview("");
           load();
-        }
-      }
+        },
+      },
     ]);
   };
 
   const importFile = async () => {
     await importLocalFile();
-    setCurrentFolder(folderList[3]);
+    setCurrentFolder(folderList[3]); // Switch to downloads
     load();
   };
 
   return (
     <Screen dark={dark}>
       <Title dark={dark}>File Manager</Title>
-      <Muted dark={dark}>Browse, import, delete, move, copy, and share local developer files.</Muted>
+      <Muted dark={dark} style={{ marginBottom: 16 }}>
+        Browse, import, and manage local resources.
+      </Muted>
 
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 10 }}>
-        {folderList.map((f) => (
-          <TouchableOpacity key={f.uri} onPress={() => setCurrentFolder(f)}>
-            <Text style={{
-              color: currentFolder.uri === f.uri ? "#FFFFFF" : c.primary,
-              backgroundColor: currentFolder.uri === f.uri ? c.primary : "transparent",
-              borderColor: c.border,
-              borderWidth: 1,
-              paddingHorizontal: 10,
-              paddingVertical: 8,
-              borderRadius: 999,
-              fontWeight: "700"
-            }}>
-              {f.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Horizontal Scroll for Folder Pills */}
+      <View style={{ marginHorizontal: -20, marginBottom: 20 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
+        >
+          {folderList.map((f) => {
+            const isActive = currentFolder.uri === f.uri;
+            return (
+              <TouchableOpacity
+                key={f.uri}
+                activeOpacity={0.7}
+                onPress={() => setCurrentFolder(f)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: isActive
+                    ? c.primary
+                    : dark
+                      ? "#1E293B"
+                      : "#F1F5F9",
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: isActive ? c.primary : c.border,
+                }}
+              >
+                <Ionicons
+                  name={f.icon}
+                  size={16}
+                  color={isActive ? "#FFF" : c.text}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={{
+                    color: isActive ? "#FFF" : c.text,
+                    fontWeight: "600",
+                    fontSize: 14,
+                  }}
+                >
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      <Button label="Import / Download Resource" dark={dark} onPress={importFile} />
+      <Button
+        label="Import File / Resource"
+        dark={dark}
+        variant="outline"
+        icon={
+          <Ionicons name="cloud-download-outline" size={20} color={c.primary} />
+        }
+        onPress={importFile}
+      />
 
       <FlatList
         data={files}
         keyExtractor={(item) => item.uri}
-        ListEmptyComponent={<Muted dark={dark}>No files in this folder.</Muted>}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100, paddingTop: 12 }}
+        ListEmptyComponent={
+          <View style={{ alignItems: "center", marginTop: 40 }}>
+            <Ionicons
+              name="folder-open-outline"
+              size={48}
+              color={c.border}
+              style={{ marginBottom: 16 }}
+            />
+            <Muted dark={dark}>No files in this folder.</Muted>
+          </View>
+        }
         renderItem={({ item }) => (
           <Card dark={dark}>
-            <TouchableOpacity onPress={() => openFile(item)}>
-              <Text style={{ color: c.text, fontWeight: "800" }}>{item.isDirectory ? "📁" : "📄"} {item.name}</Text>
-              <Muted dark={dark}>{Math.round((item.size ?? 0) / 1024)} KB</Muted>
+            <TouchableOpacity
+              onPress={() => openFile(item)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  backgroundColor: dark ? "#0F172A" : "#F1F5F9",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 12,
+                }}
+              >
+                <Ionicons
+                  name={item.isDirectory ? "folder" : "document-text"}
+                  size={22}
+                  color={c.primary}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: c.text,
+                    fontWeight: "700",
+                    fontSize: 16,
+                    marginBottom: 2,
+                  }}
+                >
+                  {item.name}
+                </Text>
+                <Muted dark={dark} style={{ fontSize: 13 }}>
+                  {Math.round((item.size ?? 0) / 1024)} KB
+                </Muted>
+              </View>
             </TouchableOpacity>
-            <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-              <Button label="Share" dark={dark} variant="ghost" onPress={() => shareFile(item.uri)} />
-              <Button label="Copy" dark={dark} variant="ghost" onPress={() => chooseTarget(item, false)} />
-              <Button label="Move" dark={dark} variant="ghost" onPress={() => chooseTarget(item, true)} />
-              <Button label="Delete" dark={dark} variant="danger" onPress={() => remove(item)} />
+
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 8,
+                flexWrap: "wrap",
+                borderTopWidth: 1,
+                borderTopColor: c.border,
+                paddingTop: 16,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => shareFile(item.uri)}
+                style={{ flex: 1, alignItems: "center", paddingVertical: 8 }}
+              >
+                <Ionicons name="share-outline" size={20} color={c.primary} />
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: c.primary,
+                    marginTop: 4,
+                    fontWeight: "600",
+                  }}
+                >
+                  Share
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => chooseTarget(item, false)}
+                style={{ flex: 1, alignItems: "center", paddingVertical: 8 }}
+              >
+                <Ionicons name="copy-outline" size={20} color={c.primary} />
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: c.primary,
+                    marginTop: 4,
+                    fontWeight: "600",
+                  }}
+                >
+                  Copy
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => chooseTarget(item, true)}
+                style={{ flex: 1, alignItems: "center", paddingVertical: 8 }}
+              >
+                <Ionicons name="move-outline" size={20} color={c.primary} />
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: c.primary,
+                    marginTop: 4,
+                    fontWeight: "600",
+                  }}
+                >
+                  Move
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => remove(item)}
+                style={{ flex: 1, alignItems: "center", paddingVertical: 8 }}
+              >
+                <Ionicons name="trash-outline" size={20} color={c.danger} />
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: c.danger,
+                    marginTop: 4,
+                    fontWeight: "600",
+                  }}
+                >
+                  Delete
+                </Text>
+              </TouchableOpacity>
             </View>
           </Card>
         )}
       />
 
       {preview ? (
-        <Card dark={dark}>
-          <Title dark={dark} style={{ fontSize: 18 }}>Preview</Title>
-          <Text selectable style={{ color: c.text, fontFamily: "monospace" }}>{preview}</Text>
+        <Card dark={dark} style={{ marginTop: 20 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
+            <Title dark={dark} style={{ fontSize: 18, marginBottom: 0 }}>
+              Preview
+            </Title>
+            <TouchableOpacity onPress={() => setPreview("")}>
+              <Ionicons name="close-circle" size={24} color={c.muted} />
+            </TouchableOpacity>
+          </View>
+          <View
+            style={{
+              backgroundColor: dark ? "#000" : "#F8FAFC",
+              padding: 14,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: c.border,
+            }}
+          >
+            <Text
+              selectable
+              style={{
+                color: c.text,
+                fontFamily: "monospace",
+                fontSize: 13,
+                lineHeight: 20,
+              }}
+            >
+              {preview}
+            </Text>
+          </View>
         </Card>
       ) : null}
     </Screen>

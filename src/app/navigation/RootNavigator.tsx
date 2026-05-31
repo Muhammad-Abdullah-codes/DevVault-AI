@@ -7,16 +7,22 @@ import { SnippetDetailScreen } from "../screens/SnippetDetailScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-export function RootNavigator({ dark, setDark }: { dark: boolean; setDark: (v: boolean) => void }) {
+export function RootNavigator({
+  dark,
+  setDark,
+}: {
+  dark: boolean;
+  setDark: (v: boolean) => void;
+}) {
   return (
-    <Stack.Navigator>
-      <Stack.Screen name="Tabs" options={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Tabs">
         {(props) => <BottomTabs {...props} dark={dark} setDark={setDark} />}
       </Stack.Screen>
-      <Stack.Screen name="CreateSnippet" options={{ title: "Snippet" }}>
+      <Stack.Screen name="CreateSnippet">
         {(props) => <CreateSnippetScreen {...props} dark={dark} />}
       </Stack.Screen>
-      <Stack.Screen name="SnippetDetail" options={{ title: "Snippet Details" }}>
+      <Stack.Screen name="SnippetDetail">
         {(props) => <SnippetDetailScreen {...props} dark={dark} />}
       </Stack.Screen>
     </Stack.Navigator>
